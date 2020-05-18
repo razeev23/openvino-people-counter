@@ -83,13 +83,64 @@ From the main directory:
    npm install
    ```
 
-## What model to use
+## Explaining Model Selection & Custom Layers
+There are lots ot pre-trained detection model availaible on different dataset such as e COCO dataset, the Kitti dataset, the Open Images dataset, the AVA v2.1 dataset and the iNaturalist Species Detection Dataset on the **tensorflow detection model zoo**. how i have tried the three different model they are 
+- ssd_mobilenet_v2_coco
+- faster_rcnn_inception_v2_coco
+- Ssd_inception_v2_coco 
+in which _faster_rcnn_inception_v2_coco_ gave the best result in terms of fast detection and errors.Intel openVINO already contains extensions for custom layers used in TensorFlow Object Detection Model Zoo.
 
-It is up to you to decide on what model to use for the application. You need to find a model not already converted to Intermediate Representation format (i.e. not one of the Intel® Pre-Trained Models), convert it, and utilize the converted model in your application.
+## Downloading the faster rcnn model of TensorFlow Object Detection Modal Zoo
+```
+wget http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2018_01_28.tar.gz
+```
+## extracting the faster rcnn model
+```
+tar -xvf faster_rcnn_inception_v2_coco_2018_01_28.tar.gz
+```
+### navigate to the extracted model by the following command
+```
+cd faster_rcnn_inception_v2_coco_2018_01_28.tar.gz
+```
+## convert the TensorFlow model to Intermediate Representation (IR) or OpenVINO IR format with issuing the following command
+```
+python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py --input_model faster_rcnn_inception_v2_coco_2018_01_28/frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/faster_rcnn_support.json
+```
+## comparing the model performance 
+### Model - 1 ssd_mobilenet_v2_coco
+Among the three model this model gaves the bad result in terms of detection and error while issuing the following command to convert in to the IR format.
+```
+python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py --input_model ssd_mobilenet_v2_coco_2018_01_28/frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json
+```
+### Model - 2 ssd_inception_v2_coco
+Compare to the ssd_mobilenet_v2_coco it gives the good result but not the desirable result in terms of detection and errors by issuing the following command to convert it into the IR Representation.
+```
+python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py --input_model ssd_inception_v2_coco_2018_01_28/frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json
+```
+### Model - 3 faster_rcnn_inception_v2_coco
+Among the three this model gave the best result which is acceptable with its performance in terms of faste detection and error while issuing the following command to convert it into the IR Representation.
+```
+python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py --input_model ssd_inception_v2_coco_2018_01_28/frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json
+```
+## comparing the model in terms of size
+___________________________________________________________________________
+|model name                                                     | size     |
+|--------------------------------------------------------------------------|
+|sss_mobilenet_v2_coo frozen_inference_graph.pb                 |68055KB   |
+|sss_mobilenet_v2_coo frozen_inference_graph.(xml+bin)          |65807KB   |
+|------------------------------------------------------------------------  |
+|ssd_inception_v2_coco frozen_inference_graph.pb                |99592KB   |
+|ssd_inception_v2_coco frozen_inference_graph.(xml+bin)         |97875KB   |
+|--------------------------------------------------------------------------|
+|faster_rcnn_inception_v2_coco frozen_inference_graph.pb        |55815KB   |    
+|faster_rcnn_inception_v2_coco frozen_inference_graph.(xml+bin) |52106KB   |
+|__________________________________________________________________________|
 
-Note that you may need to do additional processing of the output to handle incorrect detections, such as adjusting confidence threshold or accounting for 1-2 frames where the model fails to see a person already counted and would otherwise double count.
+## Model Use Cases
+In the present situation (COVID-19 pandemic )we can use this model to check how many people are in the frame ,if more than one found then alert can be generated.
 
-**If you are otherwise unable to find a suitable model after attempting and successfully converting at least three other models**, you can document in your write-up what the models were, how you converted them, and why they failed, and then utilize any of the Intel® Pre-Trained Models that may perform better.
+## Effects on End user needs
+Various insights could be drawn on the model by testing it with different videos and analyzing the model performance on low light input videos. This would be an important factor in determining the best model for the given scenario.
 
 ## Run the application
 
