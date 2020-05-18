@@ -123,7 +123,7 @@ Among the three this model gave the best result which is acceptable with its per
 python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py --input_model ssd_inception_v2_coco_2018_01_28/frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json
 ```
 ## comparing the model in terms of size
-___________________________________________________________________________
+|--------------------------------------------------------------------------|
 |model name                                                     | size     |
 |--------------------------------------------------------------------------|
 |sss_mobilenet_v2_coo frozen_inference_graph.pb                 |68055KB   |
@@ -134,7 +134,7 @@ ___________________________________________________________________________
 |--------------------------------------------------------------------------|
 |faster_rcnn_inception_v2_coco frozen_inference_graph.pb        |55815KB   |    
 |faster_rcnn_inception_v2_coco frozen_inference_graph.(xml+bin) |52106KB   |
-|__________________________________________________________________________|
+|--------------------------------------------------------------------------|
 
 ## Model Use Cases
 In the present situation (COVID-19 pandemic )we can use this model to check how many people are in the frame ,if more than one found then alert can be generated.
