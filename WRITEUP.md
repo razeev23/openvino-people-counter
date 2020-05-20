@@ -83,21 +83,21 @@ Below is a walkthrough of the Python code for the extractor extension that appea
     ```class CustomLayerFrontExtractor(FrontExtractorOp):
        op = 'CustomLayer'
        enabled = True
-      ``
+      ```
  3.The extract function is overridden to allow modifications while extracting parameters from layers within the input model.
-    ``
-    @staticmethod
+    ```
+      @staticmethod
       def extract(node):
-      ``
+      ```
  4.The layer parameters are extracted from the input model and stored in param. This is where the layer parameters in param may be          retrieved and used as needed. For a simple custom layer, the op attribute is simply set to the name of the operation extension used.
-    ``
+    ```
     proto_layer = node.pb
       param = proto_layer.attr
     # extracting parameters from TensorFlow layer and prepare them for IR
       attrs = {
     'op': __class__.op
       }   
-     ``
+     ```
       
  5. The attributes for the specific node are updated. This is where we can modify or create attributes in attrs before updating node         with the results and the enabled class variable is returned.
     ``` 
@@ -109,26 +109,32 @@ Below is a walkthrough of the Python code for the extractor extension that appea
       ```
 ## Step 3 - Edit the Operation Extension Template File
 If the shape (i.e., dimensions) of the layer output is the same as the input shape, the generated operation extension does not need to be modified.
-Below is a walkthrough of the Python code for the operation extension that appears in the file ``your/directory/user_mo_extensions/ops/CustomLayer.py.``
+Below is a walkthrough of the Python code for the operation extension that appears in the file
+```
+your/directory/user_mo_extensions/ops/CustomLayer.py
+```
 1.Using the text editor, open the operation extension source file ``your/directory/user_mo_extensions/ops/CustomLayer.py``
 2.The class is defined with the unique name CustomLayerOp that inherits from the base operation Op class. The class variable op is set     to 'CustomLayer', the name of the layer operation
-  ``
+  ```
   class CustomLayerOp(Op):
    op = 'CustomLayer'
-   ``
+   ```
 3.The CustomLayerOp class initializer __init__ function will be called for each layer created. The initializer must initialize the super   class Op by passing the graph and attrs arguments along with a dictionary of the mandatory properties for the CustomLayer operation     layer that define the type (type), operation (op), and inference function (infer). This is where any other initialization needed by     the CustomLayerOP operation can be specified.
-  ``
-  def __init__(self, graph, attrs):
+```
+ def __init__(self, graph, attrs):
     mandatory_props = dict(
         type=__class__.op,
         op=__class__.op,
         infer=CustomLayerOp.infer            
     )
     super().__init__(graph, mandatory_props, attrs)
-    ``
+
+```  
+
+    
 4.The infer function is defined to provide the Model Optimizer information on a layer, specifically returning the shape of the layer       output for each node. Here, the layer output shape is the same as the input and the value of the helper function                         copy_shape_infer(node) is returned.
-  ``
-  @staticmethod
+``` 
+ @staticmethod
     def infer(node: Node):
     # ==========================================================
     # You should add your shape calculation implementation here
@@ -137,7 +143,7 @@ Below is a walkthrough of the Python code for the operation extension that appea
     # it on your own. Otherwise, use copy_shape_infer(node).
     # ==========================================================
     return copy_shape_infer(node)
-    ``
+```
     
 ## Step 4 - Generate the Model IR Files
 With the extensions now complete, we use the Model Optimizer to convert and optimize the example TensorFlow model into IR files that will run inference using the Inference Engine.
@@ -161,12 +167,12 @@ python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py --input_meta_g
 ``
 The output will appear similar to:
 
-``
+```
 [ SUCCESS ] Generated IR model.
 [ SUCCESS ] XML file: your/directory/cl_ext_CustomLayer/model.ckpt.xml
 [ SUCCESS ] BIN file: your/directory/cl_ext_CustomLayer/model.ckpt.bin
 [ SUCCESS ] Total execution time: x.xx seconds.
-``
+```
 ## Inference Engine Custom Layer Implementation for the Intel® CPU
 We will now use the generated CPU extension with the Inference Engine to execute the custom layer on the CPU. The steps are:
 
@@ -187,64 +193,65 @@ Now edit the ext_CustomLayer.cpp by walking through the code and making the nece
 2.To implement the CustomLayer function to efficiently execute in parallel, the code will use the parallel processing supported by the Inference Engine through the use of the Intel® Threading Building Blocks library. To use the library, at the top we must include the header ie_parallel.hpp file by adding the #include line as shown below.
 
 Before:
-``
+```
 #include "ext_base.hpp"
 #include <cmath>
-``
+```
 
 After:
-``
+```
 #include "ext_base.hpp"
 #include "ie_parallel.hpp"
 #include <cmath>
-``
+```
 3. The class CustomLayerImp implements the CustomLayer custom layer and inherits from the extension layer base class ExtLayerBase.
-``
+```
 class CustomLayerImpl: public ExtLayerBase {
     public:
-    ``
+```
 4. The CustomLayerImpl constructor is passed the layer object that it is associated with to provide access to any layer parameters that    may be needed when implementing the specific instance of the custom layer.
- ``
+ ```
  explicit CustomLayerImpl(const CNNLayer* layer) {
   try {
     ...
-    ``
+   
+  ```
 5. The CustomLayerImpl constructor configures the input and output data layout for the custom layer by calling addConfig(). In the          template file, the line is commented-out and we will replace it to indicate that layer uses DataConfigurator(ConfLayout::PLN) (plain    or linear) data for both input and output.
 
 Before:
 
-  ``
+ ```
   
 // addConfig({DataConfigurator(ConfLayout::PLN), DataConfigurator(ConfLayout::PLN)}, {DataConfigurator(ConfLayout::PLN)});
-``
+```
 After:
 
-``
+```
 addConfig(layer, { DataConfigurator(ConfLayout::PLN) }, { DataConfigurator(ConfLayout::PLN) });
-``
+```
 
 
 6.The construct is now complete, catching and reporting certain exceptions that may have been thrown before exiting.
- ``
+ ```
  } catch (InferenceEngine::details::InferenceEngineException &ex) {
     errorMsg = ex.what();
   }
  }
- ``
+ ```
 7. The execute method is overridden to implement the functionality of the custom layer. The inputs and outputs are the data buffers passed as Blob objects. The template file will simply return NOT_IMPLEMENTED by default. To calculate the custom layer, we will replace the execute method with the code needed to calculate the CustomLayer function in parallel using the parallel_for3d function.
 
 Before:
 
-``
+```
 StatusCode execute(std::vector<Blob::Ptr>& inputs, std::vector<Blob::Ptr>& outputs,
     ResponseDesc *resp) noexcept override {
     // Add here implementation for layer inference
     // Examples of implementations you can find in Inference Engine tool samples/extensions folder
     return NOT_IMPLEMENTED;
-    ``
+   ```
  After:
  
- `` 
+ ``` 
  StatusCode execute(std::vector<Blob::Ptr>& inputs, std::vector<Blob::Ptr>& outputs,
     ResponseDesc *resp) noexcept override {
     // Add implementation for layer inference here
@@ -273,7 +280,7 @@ StatusCode execute(std::vector<Blob::Ptr>& inputs, std::vector<Blob::Ptr>& outpu
   });
 return OK;
 }
-``
+```
 
 
 **Edit CMakeLists.txt**
@@ -285,117 +292,118 @@ Because the implementation of the CustomLayer custom layer makes use of the para
 
 Before:
 
-``
+```
 set(TARGET_NAME "user_cpu_extension")
-``
+```
 
 After:
 
-``
+```
 set(TARGET_NAME "CustomLayer_cpu_extension")
-``
+```
 3.Now modify the include_directories to add the header include path for the Intel® Threading Building Blocks library located in ``/opt/intel/openvino/deployment_tools/inference_engine/external/tbb/include:``
 
 Before:
 
-``
+```
 include_directories (PRIVATE
 ${CMAKE_CURRENT_SOURCE_DIR}/common
 ${InferenceEngine_INCLUDE_DIRS}
 )
-``
+```
 
 After:
 
-``
+```
 include_directories (PRIVATE
 ${CMAKE_CURRENT_SOURCE_DIR}/common
 ${InferenceEngine_INCLUDE_DIRS}
 "/opt/intel/openvino/deployment_tools/inference_engine/external/tbb/include"
 )
-``
+```
 
 4.Now add the link_directories with the path to the Intel® Threading Building Blocks library binaries at /opt/intel/openvino/deployment_tools/inference_engine/external/tbb/lib:
 
 Before:
-``
+```
 ...
 #enable_omp()
-``
+```
 
 After:
-``
+```
 ...
 link_directories(
 "/opt/intel/openvino/deployment_tools/inference_engine/external/tbb/lib"
 )
 #enable_omp()
-``
+```
 5.Finally, add the Intel® Threading Building Blocks library tbb to the list of link libraries in target_link_libraries:
 
 Before:
-``
+```
 target_link_libraries(${TARGET_NAME} ${InferenceEngine_LIBRARIES} ${intel_omp_lib})
-``
+```
 After:
-``
+```
 target_link_libraries(${TARGET_NAME} ${InferenceEngine_LIBRARIES} ${intel_omp_lib} tbb)
-``
+```
 
 **Compile the Extension Library**
 To run the custom layer on the CPU during inference, the edited extension C++ source code must be compiled to create a .so shared library used by the Inference Engine. In the following steps, we will now compile the extension C++ library.
 
 1.First, we run the following commands to use CMake to setup for compiling:
 
-``
+```
 cd your/directory/cl_CustomLayer/user_ie_extensions/cpu
 mkdir -p build
 cd build
 cmake ..
-``
+```
 The output will appear similar to:
-``
+```
 -- Generating done
 -- Build files have been written to: your/directory/cl_tutorial/cl_CustomLayer/user_ie_extensions/cpu/build
-``
+```
 2.The CPU extension library is now ready to be compiled. Compile the library using the command:
-``
+```
 make -j $(nproc)
-``
+```
 The output will appear similar to:
-``
+```
 [100%] Linking CXX shared library libCustomLayer_cpu_extension.so
 [100%] Built target CustomLayer_cpu_extension
-``
+```
 
 ## Execute the Model with the Custom Layer
 Using a C++ Sample
 To start on a C++ sample, we first need to build the C++ samples for use with the Inference Engine:
-`` cd /opt/intel/openvino/deployment_tools/inference_engine/samples/
+```
+cd /opt/intel/openvino/deployment_tools/inference_engine/samples/
 ./build_samples.sh ``
 
 This will take a few minutes to compile all of the samples.
 
 Next, we will try running the C++ sample without including the CustomLayer extension library to see the error describing the unsupported CustomLayer operation using the command:
 ``~/inference_engine_samples_build/intel64/Release/classification_sample_async -i pic.bmp -m your/directory/cl_ext_CustomLayer/model.ckpt.xml -d CPU
-``
+```
 
 The error output will be similar to:
 
-``
+```
 [ ERROR ] Unsupported primitive of type: CustomLayer name: ModCustomLayer/CustomLayer/CustomLayer
-``
+```
 We will now run the command again, this time with the CustomLayer extension library specified using the -l your/directory/cl_CustomLayer/user_ie_extensions/cpu/build/libCustomLayer_cpu_extension.so option in the command:
-``
+```
 ~/inference_engine_samples_build/intel64/Release/classification_sample_async -i pic.bmp -m your/directory/cl_ext_CustomL
-``
+```
 
 The output will appear similar to:
-``
+```
 Image /directory/path/pic.bmp
 
 |classid| probability|
-|--------------------|
+|-------|------------|
 |0      | 0.9308984  |  
 |1      | 0.0691015  |
 
@@ -405,7 +413,7 @@ Average running time of one iteration: xx.xxxxxxx ms
 Throughput: xx.xxxxxxx FPS
 
 [ INFO ] Execution successful
-``
+```
  **Using a Python Sample**
  First, we will try running the Python sample without including the CustomLayer extension library to see the error describing the unsupported CustomLayer operation using the command:
  ``
@@ -414,27 +422,27 @@ Throughput: xx.xxxxxxx FPS
  
  The error output will be similar to:
  
- ``
+ ```
  [ INFO ] Loading network files:
 your/directory/cl_tutorial/tf_model/model.ckpt.xml
 your/directory/cl_tutorial/tf_model/model.ckpt.bin
 [ ERROR ] Following layers are not supported by the plugin for specified device CPU:
 ModCustomLayer/CustomLayer/CustomLayer, ModCustomLayer/CustomLayer_1/CustomLayer, ModCustomLayer/CustomLayer_2/CustomLayer
 [ ERROR ] Please try to specify cpu extensions library path in sample's command line parameters using -l or --cpu_extension command line argument
-``
+```
 We will now run the command again, this time with the CustomLayer extension library specified using the -l your/directory/cl_CustomLayer/user_ie_extensions/cpu/build/libCustomLayer_cpu_extension.so option in the command:
-``
+```
 python /opt/intel/openvino/deployment_tools/inference_engine/samples/python_samples/classification_sample_async/classification_sample_async.py -i pic.bmp -m your/directory/cl_ext_CustomLayer/model.ckpt.xml -l your/directory/cl_CustomLayer/user_ie_extensions/cpu/build/libCustomLayer_cpu_extension.so -d CPU
-``
+```
 The output will appear similar to:
-``
+```
 Image your/directory/cl_tutorial/OpenVINO-Custom-Layers/pics/dog.bmp
 
 |classid| probability|
-|------------------- |
+|-------|----------- |
 |0      |0.9308984   |
 |1      |0.0691015   |
-``
+```
 ## Why you might need to handle custom layers?
 Some of the potential reasons for handling custom layers are:
 
